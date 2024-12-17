@@ -25,4 +25,3 @@ if __name__ == "__main__":
     classifier.train(X_train, y_train, X_val, y_val, epochs=5)
 
     accuracy = classifier.evaluate(X_test, y_test)
-    print(f"Précision finale sur les données de test : {accuracy:.4f}")
