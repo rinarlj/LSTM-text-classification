@@ -1,32 +1,30 @@
-from models import LSTMClassifier
-import pickle
+from model import LSTMClassifier
+from sklearn.model_selection import train_test_split
+import pandas as pd
+import os
 
-with open('/content/drive/MyDrive/imdb_train_test_text.pkl', 'rb') as f:
-    data = pickle.load(f)
+def load_data(csv_path):
 
-train_text = data['train_text']
-test_text = data['test_text']
-train_labels = data['train_labels']
-test_labels = data['test_labels']
+    data = pd.read_csv(csv_path)
 
-# Initialiser le modèle
-vocab_size = 10000
-max_length = 200
-embedding_dim = 100
-lstm_units = 256
+    texts = data['text'].tolist()
+    labels = (data['Label'] == 'bodo').astype(int).tolist()  
+    return texts, labels
 
-lstm_classifier = LSTMClassifier(vocab_size=vocab_size, max_length=max_length, embedding_dim=embedding_dim, lstm_units=lstm_units)
+if __name__ == "__main__":
+   
+    texts, labels = load_data("data.csv")
 
-# Prétraitement des données
-X_train, y_train = lstm_classifier.preprocess(train_text, train_labels)
-X_test, y_test = lstm_classifier.preprocess(test_text, test_labels)
+    classifier = LSTMClassifier()
+    X, y = classifier.preprocess(texts, labels)
 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
+    # --- Étape 5 : Construction et entraînement du modèle ---
+    classifier.build_model(bidirectional=True)
+    classifier.train(X_train, y_train, X_val, y_val, epochs=5)
 
-# Construire et entraîner le modèle
-lstm_classifier.build_model(bidirectional=True)  # LSTM bidirectionnel activé
-lstm_classifier.train(X_train, y_train, X_test, y_test, batch_size=32, epochs=10)
-
-# Évaluation sur les données de test
-accuracy = lstm_classifier.evaluate(X_test, y_test)
-print(f"Test Accuracy: {accuracy:.2f}")
+    # --- Étape 6 : Évaluation sur les données de test ---
+    accuracy = classifier.evaluate(X_test, y_test)
+    print(f"Précision finale sur les données de test : {accuracy:.4f}")
