@@ -26,45 +26,32 @@ class LSTMClassifier:
         self.tokenizer = None
         self.model = None
 
-    # --- Prétraitement des données ---
     def preprocess(self, texts, labels):
-        """
-        Tokenisation et padding des textes.
-
-        Args:
-        - texts : Liste des textes.
-        - labels : Liste des étiquettes.
-
-        Returns:
-        - X_padded : Séquences tokenisées et remplies.
-        - y : Labels sous forme de tenseurs.
-        """
-        # Tokenizer simple pour PyTorch
+        
+        # Tokenizer 
         all_words = [word for text in texts for word in re.findall(r'\b\w+\b', text.lower())]
         counter = Counter(all_words)
         vocab = {word: idx + 2 for idx, (word, _) in enumerate(counter.most_common(self.vocab_size))}
         vocab['<PAD>'] = 0
         vocab['<UNK>'] = 1
 
-        self.tokenizer = vocab  # Sauvegarde du vocabulaire
+        self.tokenizer = vocab  
 
         def encode(text):
             tokens = [vocab.get(word, vocab['<UNK>']) for word in re.findall(r'\b\w+\b', text.lower())]
             if len(tokens) < self.max_length:
-                tokens += [0] * (self.max_length - len(tokens))  # Padding
+                tokens += [0] * (self.max_length - len(tokens)) 
             return tokens[:self.max_length]
 
         X_padded = torch.tensor([encode(text) for text in texts], dtype=torch.long)
         y = torch.tensor(labels, dtype=torch.float32)
         return X_padded, y
 
-    # --- Construction du modèle LSTM ---
-    def build_model(self, bidirectional=False):
+    # --- LSTM model ---
+    def build_model(self, bidirectional=True):
         """
-        Construction du modèle LSTM.
-
         Args:
-        - bidirectional : Si True, utilise une LSTM bidirectionnelle.
+        - bidirectional : True.
         """
         class LSTMModel(nn.Module):
             def __init__(self, vocab_size, embedding_dim, lstm_units, max_length, bidirectional):
@@ -86,15 +73,8 @@ class LSTMClassifier:
         self.model = LSTMModel(self.vocab_size, self.embedding_dim, self.lstm_units, self.max_length, bidirectional)
         print("Modèle LSTM créé.")
 
-    # --- Entraînement ---
     def train(self, X_train, y_train, X_val, y_val, batch_size=128, epochs=10, lr=0.001):
-        """
-        Entraînement du modèle.
 
-        Args:
-        - X_train, y_train : Données d'entraînement.
-        - X_val, y_val : Données de validation.
-        """
         train_data = torch.utils.data.TensorDataset(X_train, y_train)
         val_data = torch.utils.data.TensorDataset(X_val, y_val)
         train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
@@ -117,7 +97,6 @@ class LSTMClassifier:
                 optimizer.step()
                 epoch_loss += loss.item()
 
-            # Évaluation sur les données de validation
             self.model.eval()
             val_preds, val_targets = [], []
             with torch.no_grad():
@@ -129,15 +108,9 @@ class LSTMClassifier:
             val_acc = accuracy_score(val_targets, val_preds)
             print(f"Epoch {epoch + 1}/{epochs} - Loss: {epoch_loss:.4f} - Val Accuracy: {val_acc:.4f}")
 
-    # --- Évaluation ---
-    def evaluate(self, X_test, y_test):
-        """
-        Évaluation du modèle sur les données de test.
 
-        Args:
-        - X_test : Données de test.
-        - y_test : Étiquettes de test.
-        """
+    def evaluate(self, X_test, y_test):
+ 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.eval()
         self.model = self.model.to(device)
